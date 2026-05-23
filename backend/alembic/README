@@ -1,0 +1,11 @@
+Generic single-database configuration with dated migration filenames.
+
+Filename pattern: `YYYY_MM_DD_<revision>_<slug>.py`
+
+Commands (run from `backend/`):
+
+```bash
+uv run alembic upgrade head
+uv run alembic revision --autogenerate -m "describe change"
+uv run alembic downgrade -1
+```
