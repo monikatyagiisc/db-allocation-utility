@@ -43,6 +43,7 @@ class DatabaseRecordBase(BaseModel):
     start_date: date | None = None
     end_date: date | None = None
     can_be_released: str | None = None
+    jira_key: str | None = None
     comments: str | None = None
 
 
@@ -65,6 +66,7 @@ class DatabaseRecordUpdate(BaseModel):
     start_date: date | None = None
     end_date: date | None = None
     can_be_released: str | None = None
+    jira_key: str | None = None
     comments: str | None = None
 
 
@@ -147,4 +149,24 @@ class ExpiryDigestEmailRequest(BaseModel):
 
 
 class EmailSendResult(BaseModel):
+    message: str
+
+
+class JiraStatusOut(BaseModel):
+    enabled: bool
+    configured: bool
+    base_url: str | None = None
+    hint: str | None = None
+
+
+class JiraCommentRequest(BaseModel):
+    comment: str = Field(min_length=1, max_length=32000)
+    jira_key: str | None = Field(default=None, max_length=32)
+    save_jira_key: bool = False
+
+
+class JiraCommentResult(BaseModel):
+    issue_key: str
+    comment_id: str
+    browse_url: str | None = None
     message: str

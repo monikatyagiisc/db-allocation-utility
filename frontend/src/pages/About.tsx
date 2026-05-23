@@ -14,6 +14,7 @@ export default function About() {
         <li>Delete individual database records</li>
         <li>Home page KPIs: expiring this month, prod mirror count, and more</li>
         <li>Email via Microsoft Outlook (SMTP): notify assignees and send expiry reports</li>
+        <li>JIRA: link issue keys and add comments from the Databases page</li>
         <li>Secure login and user registration</li>
       </ul>
       <h2>Excel columns</h2>

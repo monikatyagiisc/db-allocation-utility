@@ -34,6 +34,7 @@ class DatabaseRecord(Base):
     start_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     end_date: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
     can_be_released: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    jira_key: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
     comments: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(

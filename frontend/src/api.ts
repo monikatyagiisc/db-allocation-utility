@@ -25,6 +25,7 @@ export type DatabaseRecord = {
   start_date: string | null;
   end_date: string | null;
   can_be_released: string | null;
+  jira_key: string | null;
   comments: string | null;
   created_at: string;
   updated_at: string | null;
@@ -168,6 +169,7 @@ export type DatabaseSortField =
   | 'start_date'
   | 'end_date'
   | 'can_be_released'
+  | 'jira_key'
   | 'comments';
 
 export async function listDatabases(
@@ -271,6 +273,44 @@ export async function sendExpiryDigestEmail(payload: {
   return request<{ message: string }>('/email/expiry-digest', {
     method: 'POST',
     body: JSON.stringify(payload),
+  });
+}
+
+export type JiraStatus = {
+  enabled: boolean;
+  configured: boolean;
+  base_url: string | null;
+  hint: string | null;
+};
+
+export async function getJiraStatus() {
+  return request<JiraStatus>('/jira/status');
+}
+
+export async function addJiraCommentForRecord(
+  recordId: number,
+  payload: { comment: string; jira_key?: string; save_jira_key?: boolean },
+) {
+  return request<{
+    issue_key: string;
+    comment_id: string;
+    browse_url: string | null;
+    message: string;
+  }>(`/jira/databases/${recordId}/comment`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function addJiraCommentOnIssue(issueKey: string, comment: string) {
+  return request<{
+    issue_key: string;
+    comment_id: string;
+    browse_url: string | null;
+    message: string;
+  }>(`/jira/issues/${encodeURIComponent(issueKey)}/comment`, {
+    method: 'POST',
+    body: JSON.stringify({ comment }),
   });
 }
 

@@ -39,6 +39,12 @@ class Settings(BaseSettings):
     azure_client_secret: str = ""
     graph_send_as: str = ""  # mailbox UPN to send from (defaults to mail_from)
 
+    # Atlassian JIRA Cloud (API token: https://id.atlassian.com/manage-profile/security/api-tokens)
+    jira_enabled: bool = False
+    jira_base_url: str = ""  # https://yourcompany.atlassian.net
+    jira_email: str = ""
+    jira_api_token: str = ""
+
     @computed_field
     @property
     def database_url(self) -> str:

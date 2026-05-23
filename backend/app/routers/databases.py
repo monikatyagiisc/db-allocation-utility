@@ -59,6 +59,7 @@ SORTABLE_COLUMNS = {
     "start_date": DatabaseRecord.start_date,
     "end_date": DatabaseRecord.end_date,
     "can_be_released": DatabaseRecord.can_be_released,
+    "jira_key": DatabaseRecord.jira_key,
     "comments": DatabaseRecord.comments,
 }
 

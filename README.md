@@ -177,7 +177,7 @@ yarn dev --port 3000
 
 ## Email via Microsoft Outlook
 
-Most corporate tenants (including Alight) **disable SMTP username/password** with error `5.7.139 basic authentication is disabled`. Use **Microsoft Graph** instead:
+Most corporate tenants **disable SMTP username/password** with error `5.7.139 basic authentication is disabled`. Use **Microsoft Graph** instead:
 
 ### Option A — Microsoft Graph (recommended)
 
@@ -190,8 +190,8 @@ Most corporate tenants (including Alight) **disable SMTP username/password** wit
 ```env
 EMAIL_ENABLED=true
 EMAIL_PROVIDER=graph
-MAIL_FROM=you@alight.com
-GRAPH_SEND_AS=you@alight.com
+MAIL_FROM=you@yourcompany.com
+GRAPH_SEND_AS=you@yourcompany.com
 AZURE_TENANT_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 AZURE_CLIENT_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 AZURE_CLIENT_SECRET=your-secret-value
@@ -225,6 +225,41 @@ If you see **5.7.139**, SMTP is blocked — switch to Option A.
 
 Assignee column can be a plain email (`user@company.com`) or `Name <user@company.com>`.
 
+## JIRA integration
+
+Link each database row to a JIRA issue and **post comments** from the app.
+
+### Configure `backend/.env`
+
+```env
+JIRA_ENABLED=true
+JIRA_BASE_URL=https://yourcompany.atlassian.net
+JIRA_EMAIL=you@yourcompany.com
+JIRA_API_TOKEN=your-api-token
+```
+
+Create an API token at [Atlassian account settings → Security → API tokens](https://id.atlassian.com/manage-profile/security/api-tokens). Use the same email you use to log in to JIRA.
+
+Restart the backend after changing `.env`.
+
+### In the UI
+
+| Action | Where |
+|--------|--------|
+| Set JIRA key on a row | **Edit** → **JIRA** field (e.g. `PROJ-123`), or Excel column **JIRA** |
+| Post a comment | **Databases** → **JIRA** on a row → enter key + comment |
+| Open issue in browser | Click the JIRA key in the table (when configured) |
+
+Comments include database name, type, assignee, end date, and status for context.
+
+### API
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/jira/status` | JIRA configuration status |
+| POST | `/api/jira/issues/{PROJ-123}/comment` | Comment on any issue |
+| POST | `/api/jira/databases/{id}/comment` | Comment using record context + optional `jira_key` |
+
 ## Logging
 
 Logs are prefixed for easy filtering:
@@ -250,6 +285,7 @@ Each API request gets an `X-Request-ID` — on errors, the UI shows it so you ca
 - **KPIs (home)** — expiring this month (End Date), prod mirror count, totals
 - **Auth** — registration and login (JWT)
 - **Email (Outlook)** — notify assignees, email KPI/expiry reports, custom messages
+- **JIRA** — link issue keys per database row; post comments to JIRA
 - **About** page
 
 ## API
@@ -269,6 +305,9 @@ Each API request gets an `X-Request-ID` — on errors, the UI shows it so you ca
 | POST | `/api/email/send` | Send custom email |
 | POST | `/api/email/records/{id}/notify` | Email assignee about a record |
 | POST | `/api/email/expiry-digest` | Email KPI category report |
+| GET | `/api/jira/status` | JIRA configuration status |
+| POST | `/api/jira/issues/{key}/comment` | Add comment to JIRA issue |
+| POST | `/api/jira/databases/{id}/comment` | Add JIRA comment with database context |
 
 ## Project layout
 

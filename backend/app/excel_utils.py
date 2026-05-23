@@ -9,7 +9,7 @@ from app.models import DatabaseRecord
 
 logger = get_logger("app.excel")
 
-MAX_HEADER_COLS = 16
+MAX_HEADER_COLS = 17
 
 EXCEL_HEADERS = [
     "S.N.",
@@ -26,6 +26,7 @@ EXCEL_HEADERS = [
     "Start Date",
     "End Date",
     "Can be released -Y/N",
+    "JIRA",
     "Comments",
 ]
 
@@ -50,6 +51,10 @@ HEADER_ALIASES: dict[str, str] = {
     "end date": "end_date",
     "can be released -y/n": "can_be_released",
     "can be released": "can_be_released",
+    "jira": "jira_key",
+    "jira id": "jira_key",
+    "jira key": "jira_key",
+    "jira issue": "jira_key",
     "comments": "comments",
 }
 
@@ -109,6 +114,12 @@ def _cell_int(value) -> int | None:
         return None
 
 
+def _normalize_jira_cell(value: str | None) -> str | None:
+    if not value:
+        return None
+    return value.strip().upper()
+
+
 def _cell_str(value) -> str | None:
     if value is None:
         return None
@@ -135,6 +146,7 @@ def row_to_record(row: tuple, col_map: dict[str, int], database_type: str) -> Da
         start_date=_cell_date(_get_cell(row, col_map, "start_date")),
         end_date=_cell_date(_get_cell(row, col_map, "end_date")),
         can_be_released=_cell_str(_get_cell(row, col_map, "can_be_released")),
+        jira_key=_normalize_jira_cell(_cell_str(_get_cell(row, col_map, "jira_key"))),
         comments=_cell_str(_get_cell(row, col_map, "comments")),
     )
 
@@ -222,6 +234,7 @@ def record_to_row(record: DatabaseRecord) -> list:
         record.start_date,
         record.end_date,
         record.can_be_released,
+        record.jira_key,
         record.comments,
     ]
 

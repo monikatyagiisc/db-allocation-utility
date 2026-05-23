@@ -37,5 +37,6 @@ export const DATABASE_FIELDS: DatabaseFieldConfig[] = [
     label: 'Can release',
     headerTitle: 'Can be released -Y/N',
   },
+  { key: 'jira_key', label: 'JIRA', headerTitle: 'JIRA issue key (e.g. PROJ-123)' },
   { key: 'comments', label: 'Comments', wide: true },
 ];

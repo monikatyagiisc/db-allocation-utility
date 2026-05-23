@@ -5,6 +5,7 @@ import {
   deleteDatabase,
   exportExcel,
   importExcel,
+  getJiraStatus,
   listDatabases,
   updateDatabase,
   type DatabaseRecord,
@@ -14,6 +15,7 @@ import {
 } from '../api';
 import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog';
 import EditDatabaseDialog from '../components/EditDatabaseDialog';
+import JiraCommentDialog from '../components/JiraCommentDialog';
 import SendEmailDialog, { type EmailMode } from '../components/SendEmailDialog';
 import { DATABASE_FIELDS } from '../databaseFields';
 import { useAuth } from '../AuthContext';
@@ -61,6 +63,8 @@ export default function Databases() {
   const [sortOrder, setSortOrder] = useState<SortOrder>(DEFAULT_SORT_ORDER);
   const [expiryFilter, setExpiryFilter] = useState<ExpiryFilter>(initialExpiry);
   const [emailMode, setEmailMode] = useState<EmailMode | null>(null);
+  const [jiraRecord, setJiraRecord] = useState<DatabaseRecord | null>(null);
+  const [jiraBaseUrl, setJiraBaseUrl] = useState<string | null>(null);
 
   const monthName = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
   const nextMonthDate = new Date();
@@ -106,6 +110,13 @@ export default function Databases() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (!user) return;
+    getJiraStatus()
+      .then((s) => setJiraBaseUrl(s.base_url))
+      .catch(() => setJiraBaseUrl(null));
+  }, [user]);
 
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -253,6 +264,15 @@ export default function Databases() {
         mode={emailMode}
         onClose={() => setEmailMode(null)}
         onSent={(msg) => setMessage(msg)}
+      />
+      <JiraCommentDialog
+        open={jiraRecord !== null}
+        record={jiraRecord}
+        onClose={() => setJiraRecord(null)}
+        onSent={(msg) => {
+          setMessage(msg);
+          load();
+        }}
       />
       <div className="page-header">
         <h1>Database records{typeFilter ? ` — ${typeFilter}` : ''}</h1>
@@ -428,6 +448,14 @@ export default function Databases() {
                         <button
                           type="button"
                           className="btn btn-sm btn-secondary"
+                          onClick={() => setJiraRecord(record)}
+                          title="Add a comment to the linked JIRA issue"
+                        >
+                          JIRA
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-secondary"
                           onClick={() =>
                             setEmailMode({
                               type: 'record',
@@ -455,9 +483,26 @@ export default function Databases() {
                       className={wide ? 'col-comments' : `col-${key}`}
                       title={!wide && record[key] ? String(record[key]) : undefined}
                     >
-                      {key === 'start_date' || key === 'end_date' ? (
-                        record[key]?.slice(0, 10) ?? '—'
-                      ) : wide ? (
+                      {key === 'jira_key' ? (
+                          record.jira_key ? (
+                            jiraBaseUrl ? (
+                              <a
+                                href={`${jiraBaseUrl}/browse/${record.jira_key}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="jira-key-link"
+                              >
+                                {record.jira_key}
+                              </a>
+                            ) : (
+                              record.jira_key
+                            )
+                          ) : (
+                            '—'
+                          )
+                        ) : key === 'start_date' || key === 'end_date' ? (
+                          record[key]?.slice(0, 10) ?? '—'
+                        ) : wide ? (
                         <div className="cell-comments-scroll">
                           {String(record[key] ?? '—')}
                         </div>
