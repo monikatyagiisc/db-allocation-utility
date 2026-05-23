@@ -14,8 +14,19 @@ import {
 } from '../api';
 import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog';
 import EditDatabaseDialog from '../components/EditDatabaseDialog';
+import SendEmailDialog, { type EmailMode } from '../components/SendEmailDialog';
 import { DATABASE_FIELDS } from '../databaseFields';
 import { useAuth } from '../AuthContext';
+import type { KpiCategory } from '../api';
+
+function guessAssigneeEmail(assignee: string | null | undefined): string | undefined {
+  if (!assignee) return undefined;
+  const t = assignee.trim();
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t)) return t;
+  const angle = t.match(/<([^>]+@[^>]+)>/);
+  if (angle) return angle[1];
+  return undefined;
+}
 
 type PendingDelete =
   | { type: 'record'; id: number; name: string }
@@ -49,6 +60,7 @@ export default function Databases() {
   const [sortBy, setSortBy] = useState<DatabaseSortField>(DEFAULT_SORT);
   const [sortOrder, setSortOrder] = useState<SortOrder>(DEFAULT_SORT_ORDER);
   const [expiryFilter, setExpiryFilter] = useState<ExpiryFilter>(initialExpiry);
+  const [emailMode, setEmailMode] = useState<EmailMode | null>(null);
 
   const monthName = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
   const nextMonthDate = new Date();
@@ -236,6 +248,12 @@ export default function Databases() {
         onSave={saveEdit}
         onCancel={cancelEdit}
       />
+      <SendEmailDialog
+        open={emailMode !== null}
+        mode={emailMode}
+        onClose={() => setEmailMode(null)}
+        onSent={(msg) => setMessage(msg)}
+      />
       <div className="page-header">
         <h1>Database records{typeFilter ? ` — ${typeFilter}` : ''}</h1>
         <div className="toolbar">
@@ -298,6 +316,31 @@ export default function Databases() {
             </label>
           </div>
           <div className="toolbar-actions">
+            {expiryFilter && (
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() =>
+                  setEmailMode({
+                    type: 'digest',
+                    category: expiryFilter as KpiCategory,
+                    databaseType: typeFilter,
+                    title: `Expiring — ${expiryFilter === 'expiring_this_month' ? monthName : nextMonthName}`,
+                  })
+                }
+                title="Email the filtered expiry list via Outlook"
+              >
+                Email expiry list
+              </button>
+            )}
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => setEmailMode({ type: 'custom' })}
+              title="Send a custom email via Outlook"
+            >
+              Send email
+            </button>
             <label className="btn btn-secondary file-btn">
               Upload Excel
               <input type="file" accept=".xlsx,.xlsm" hidden onChange={handleImport} />
@@ -376,19 +419,34 @@ export default function Databases() {
                   >
                     <div className="actions-buttons">
                       <button
-                        type="button"
-                        className="btn btn-sm btn-primary"
-                        onClick={() => startEdit(record)}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-danger"
-                        onClick={() => requestDeleteRecord(record.id, record.database_name)}
-                      >
-                        Delete
-                      </button>
+                          type="button"
+                          className="btn btn-sm btn-primary"
+                          onClick={() => startEdit(record)}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-secondary"
+                          onClick={() =>
+                            setEmailMode({
+                              type: 'record',
+                              recordId: record.id,
+                              defaultTo: guessAssigneeEmail(record.assignee),
+                              databaseName: record.database_name,
+                            })
+                          }
+                          title="Email assignee via Outlook"
+                        >
+                          Email
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-danger"
+                          onClick={() => requestDeleteRecord(record.id, record.database_name)}
+                        >
+                          Delete
+                        </button>
                     </div>
                   </td>
                   {FIELDS.map(({ key, wide }) => (

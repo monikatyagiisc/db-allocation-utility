@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse
 from app.config import settings
 from app.logging_config import get_logger, setup_logging
 from app.middleware.logging import LoggingMiddleware
-from app.routers import auth, databases
+from app.routers import auth, databases, email
 
 setup_logging()
 logger = get_logger("app.main")
@@ -50,6 +50,7 @@ app.add_middleware(LoggingMiddleware)
 
 app.include_router(auth.router)
 app.include_router(databases.router)
+app.include_router(email.router)
 
 
 @app.exception_handler(HTTPException)

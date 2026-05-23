@@ -113,3 +113,35 @@ class KpiListResponse(BaseModel):
     title: str
     count: int
     records: list[DatabaseRecordOut]
+
+
+class EmailStatusOut(BaseModel):
+    enabled: bool
+    configured: bool
+    smtp_host: str
+    mail_from: str | None = None
+
+
+class SendEmailRequest(BaseModel):
+    to: list[EmailStr] = Field(min_length=1)
+    cc: list[EmailStr] = Field(default_factory=list)
+    subject: str = Field(min_length=1, max_length=500)
+    body: str = Field(min_length=1)
+    html: bool = False
+
+
+class NotifyRecordEmailRequest(BaseModel):
+    to: EmailStr | None = None
+    message: str | None = Field(default=None, max_length=4000)
+
+
+class ExpiryDigestEmailRequest(BaseModel):
+    category: str
+    to: list[EmailStr] = Field(min_length=1)
+    cc: list[EmailStr] = Field(default_factory=list)
+    database_type: str | None = None
+    message: str | None = Field(default=None, max_length=4000)
+
+
+class EmailSendResult(BaseModel):
+    message: str

@@ -5,9 +5,10 @@ type Props = {
   category: KpiCategory | null;
   databaseType?: string | null;
   onClose: () => void;
+  onEmailReport?: (category: KpiCategory, title: string) => void;
 };
 
-export default function KpiDetailDialog({ category, databaseType, onClose }: Props) {
+export default function KpiDetailDialog({ category, databaseType, onClose, onEmailReport }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [title, setTitle] = useState('');
@@ -85,6 +86,15 @@ export default function KpiDetailDialog({ category, databaseType, onClose }: Pro
           </>
         )}
         <div className="modal-actions">
+          {onEmailReport && category && !loading && !error && records.length > 0 && (
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => onEmailReport(category, title || 'Database list')}
+            >
+              Email report
+            </button>
+          )}
           <button type="button" className="btn btn-primary" onClick={onClose}>
             Close
           </button>

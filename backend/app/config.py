@@ -23,6 +23,15 @@ class Settings(BaseSettings):
     log_file: str | None = ".local/logs/api.log"
     log_request_body: bool = True
 
+    # Microsoft Outlook / Office 365 SMTP (smtp.office365.com:587)
+    email_enabled: bool = False
+    smtp_host: str = "smtp.office365.com"
+    smtp_port: int = 587
+    smtp_use_tls: bool = True
+    smtp_user: str = ""
+    smtp_password: str = ""
+    mail_from: str = ""
+
     @computed_field
     @property
     def database_url(self) -> str:

@@ -175,6 +175,38 @@ yarn
 yarn dev --port 3000
 ```
 
+## Email via Microsoft Outlook
+
+The app sends mail through **Office 365 SMTP** (same as Outlook desktop/web). Configure `backend/.env`:
+
+```env
+EMAIL_ENABLED=true
+SMTP_HOST=smtp.office365.com
+SMTP_PORT=587
+SMTP_USE_TLS=true
+SMTP_USER=you@yourcompany.com
+SMTP_PASSWORD=your-app-password
+MAIL_FROM=you@yourcompany.com
+```
+
+### Outlook setup tips
+
+1. Use your work **Microsoft 365** email for `SMTP_USER` and `MAIL_FROM`.
+2. If **multi-factor authentication (MFA)** is enabled, create an **app password** at [Microsoft account security](https://account.microsoft.com/security) and use it as `SMTP_PASSWORD` (not your normal login password).
+3. Your IT admin may need to enable **SMTP AUTH** for your mailbox in Exchange Online.
+4. Restart the backend after changing `.env`.
+
+### In the UI
+
+| Action | Where |
+|--------|--------|
+| Email assignee about one database | Databases → **Email** on a row |
+| Email expiring list | Databases → filter by expiration → **Email expiry list** |
+| Email KPI report | Home → click KPI → **Email report** |
+| Custom email | Databases → **Send email** |
+
+Assignee column can be a plain email (`user@company.com`) or `Name <user@company.com>`.
+
 ## Logging
 
 Logs are prefixed for easy filtering:
@@ -199,6 +231,7 @@ Each API request gets an `X-Request-ID` — on errors, the UI shows it so you ca
 - **CRUD** — edit every uploaded field inline; delete records
 - **KPIs (home)** — expiring this month (End Date), prod mirror count, totals
 - **Auth** — registration and login (JWT)
+- **Email (Outlook)** — notify assignees, email KPI/expiry reports, custom messages
 - **About** page
 
 ## API
@@ -214,6 +247,10 @@ Each API request gets an `X-Request-ID` — on errors, the UI shows it so you ca
 | DELETE | `/api/databases/clear/all?confirm=true` | Delete all database records |
 | POST | `/api/databases/import` | Upload `.xlsx` (`?replace=true` to replace all) |
 | GET | `/api/databases/export/excel` | Download Excel |
+| GET | `/api/email/status` | Email / SMTP configuration status |
+| POST | `/api/email/send` | Send custom email |
+| POST | `/api/email/records/{id}/notify` | Email assignee about a record |
+| POST | `/api/email/expiry-digest` | Email KPI category report |
 
 ## Project layout
 

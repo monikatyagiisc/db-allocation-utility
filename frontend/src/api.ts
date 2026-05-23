@@ -224,6 +224,53 @@ export async function importExcel(file: File, replace = false) {
   );
 }
 
+export type EmailStatus = {
+  enabled: boolean;
+  configured: boolean;
+  smtp_host: string;
+  mail_from: string | null;
+};
+
+export async function getEmailStatus() {
+  return request<EmailStatus>('/email/status');
+}
+
+export async function sendCustomEmail(payload: {
+  to: string[];
+  cc?: string[];
+  subject: string;
+  body: string;
+  html?: boolean;
+}) {
+  return request<{ message: string }>('/email/send', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function notifyRecordEmail(
+  recordId: number,
+  payload: { to?: string; message?: string },
+) {
+  return request<{ message: string }>(`/email/records/${recordId}/notify`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function sendExpiryDigestEmail(payload: {
+  category: KpiCategory;
+  to: string[];
+  cc?: string[];
+  database_type?: string;
+  message?: string;
+}) {
+  return request<{ message: string }>('/email/expiry-digest', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function exportExcel() {
   log.info('GET /databases/export/excel');
   const token = getToken();

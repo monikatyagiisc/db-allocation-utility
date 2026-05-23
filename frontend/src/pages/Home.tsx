@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import KpiDetailDialog from '../components/KpiDetailDialog';
+import SendEmailDialog, { type EmailMode } from '../components/SendEmailDialog';
 import TypePieChart from '../components/TypePieChart';
 import { getKPIs, type KpiCategory, type KPIs } from '../api';
 import { useAuth } from '../AuthContext';
@@ -19,6 +20,8 @@ export default function Home() {
   const [error, setError] = useState('');
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [kpiDialog, setKpiDialog] = useState<KpiCategory | null>(null);
+  const [emailMode, setEmailMode] = useState<EmailMode | null>(null);
+  const [emailMessage, setEmailMessage] = useState('');
 
   useEffect(() => {
     if (!user) return;
@@ -101,6 +104,21 @@ export default function Home() {
         category={kpiDialog}
         databaseType={selectedType}
         onClose={() => setKpiDialog(null)}
+        onEmailReport={(category, title) => {
+          setKpiDialog(null);
+          setEmailMode({
+            type: 'digest',
+            category,
+            databaseType: selectedType ?? undefined,
+            title,
+          });
+        }}
+      />
+      <SendEmailDialog
+        open={emailMode !== null}
+        mode={emailMode}
+        onClose={() => setEmailMode(null)}
+        onSent={setEmailMessage}
       />
       <section className="hero">
         <h1>Database allocation overview</h1>
@@ -117,6 +135,7 @@ export default function Home() {
 
       {user && (
         <>
+          {emailMessage && <div className="alert alert-success">{emailMessage}</div>}
           {error && <div className="alert alert-error">{error}</div>}
           {selectedType && (
             <p className="kpi-filter-note">

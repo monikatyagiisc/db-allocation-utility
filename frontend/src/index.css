@@ -487,7 +487,7 @@ a:hover {
 
 /* Fixed column widths — sum = --data-table-total-width */
 .databases-page .data-table {
-  --col-actions: 108px;
+  --col-actions: 118px;
   --col-serial_number: 84px;
   --col-database_type: 76px;
   --col-database_name: 156px;
@@ -523,9 +523,9 @@ a:hover {
 .data-table col.col-actions,
 .data-table th.actions-col,
 .data-table td.actions-col {
-  width: var(--col-actions, 108px);
-  min-width: var(--col-actions, 108px);
-  max-width: var(--col-actions, 108px);
+  width: var(--col-actions, 118px);
+  min-width: var(--col-actions, 118px);
+  max-width: var(--col-actions, 118px);
 }
 
 .data-table col.col-serial_number,
