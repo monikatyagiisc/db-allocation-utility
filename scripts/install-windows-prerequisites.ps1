@@ -40,7 +40,8 @@ Requires winget (App Installer from Microsoft Store on Windows 10/11).
 Run as Administrator if installs fail with permission errors.
 
 After install, open a NEW terminal and run:
-  scripts\start-local.cmd
+  scripts\setup-local-postgres.cmd   (if you use local PostgreSQL)
+  scripts\start-local-postgres.cmd
 "@
 }
 
@@ -249,9 +250,9 @@ function Install-Postgres {
     Refresh-SessionPath
     if (Test-PostgresOk) {
         Write-Ok 'PostgreSQL installed'
-        Write-Host '  Default superuser is often postgres — set DB_PASSWORD in backend\.env to match your install.'
+        Write-Host '  Run: scripts\setup-local-postgres.cmd  (sets password in backend\.env and creates db_allocation)'
     } else {
-        Write-Warn 'PostgreSQL may be installed but psql is not on PATH. Add PostgreSQL\bin to PATH or use -Database docker.'
+        Write-Warn 'PostgreSQL may be installed but psql is not on PATH. Run scripts\setup-local-postgres.cmd — it finds Program Files\PostgreSQL\*\bin automatically.'
     }
 }
 
@@ -367,8 +368,9 @@ Write-Host ''
 Write-Log 'Next steps'
 Write-Host '  1. Close and reopen your terminal (refresh PATH).'
 Write-Host '  2. Copy backend\.env.example to backend\.env if needed.'
-Write-Host '  3. From project root run:  scripts\start-local.cmd'
-Write-Host '     With Docker Postgres:  .\scripts\start-local.ps1 -Docker'
+Write-Host '  3. Local PostgreSQL:  scripts\setup-local-postgres.cmd'
+Write-Host '  4. Start the app:       scripts\start-local-postgres.cmd'
+Write-Host '     Docker Postgres:    .\scripts\start-local.ps1 -Docker'
 Write-Host ''
 Write-Host 'If scripts are blocked:  Set-ExecutionPolicy -Scope CurrentUser RemoteSigned'
 Write-Host ''

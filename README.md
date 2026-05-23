@@ -57,26 +57,48 @@ Requires [App Installer / winget](https://aka.ms/getwinget). After install, **op
 
 Manual installs: [Node.js](https://nodejs.org/) + Yarn, [Python 3.12+](https://www.python.org/), [uv](https://docs.astral.sh/uv/), PostgreSQL **or** [Docker Desktop](https://www.docker.com/products/docker-desktop/), PowerShell 5.1+ (or [PowerShell 7](https://github.com/PowerShell/PowerShell)).
 
-#### Run the app
+#### Local PostgreSQL on Windows (recommended if you installed Postgres)
+
+One-time setup — finds `psql` under `Program Files\PostgreSQL`, writes `backend\.env`, creates the database:
+
+```cmd
+scripts\setup-local-postgres.cmd
+```
+
+You will be prompted for the **postgres** user password you chose during PostgreSQL installation.
+
+Start the app (uses port **5432**, does not start Docker):
+
+```cmd
+scripts\start-local-postgres.cmd
+```
+
+```powershell
+.\scripts\setup-local-postgres.ps1 -Password "your-postgres-password"
+.\scripts\start-local.ps1 -LocalPostgres
+```
+
+#### Run the app (all options)
 
 From the project root in **Command Prompt** or **PowerShell**:
+
+```cmd
+scripts\start-local-postgres.cmd
+```
+
+Or the generic starter (local Postgres by default; use `-Docker` for Docker):
 
 ```cmd
 scripts\start-local.cmd
 ```
 
-Or in PowerShell:
-
-```powershell
-.\scripts\start-local.ps1
-```
-
 Options:
 
 ```powershell
-.\scripts\start-local.ps1 -Docker      # start Postgres via Docker (host port 5433)
-.\scripts\start-local.ps1 -SkipDeps    # skip uv/yarn install on restart
-.\scripts\stop-local.ps1               # stop processes (or close the Backend/Frontend windows)
+.\scripts\start-local.ps1 -LocalPostgres   # default — local PostgreSQL on 5432
+.\scripts\start-local.ps1 -Docker          # Postgres via Docker (host port 5433)
+.\scripts\start-local.ps1 -SkipDeps        # skip uv/yarn install on restart
+.\scripts\stop-local.ps1                   # stop processes
 ```
 
 ```cmd

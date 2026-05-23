@@ -1,10 +1,12 @@
 # Start DB Allocation Utility locally on Windows (PostgreSQL, API, frontend).
 # Usage:
-#   .\scripts\start-local.ps1
-#   .\scripts\start-local.ps1 -Docker
+#   .\scripts\start-local.ps1              # local PostgreSQL (default)
+#   .\scripts\start-local-postgres.cmd       # same as above
+#   .\scripts\start-local.ps1 -Docker        # Postgres via Docker instead
 #   .\scripts\start-local.ps1 -SkipDeps
 param(
     [switch]$Docker,
+    [switch]$LocalPostgres,
     [switch]$SkipDeps,
     [switch]$Help
 )
@@ -18,16 +20,23 @@ $RunDir = Join-Path $RootDir '.local'
 $LogDir = Join-Path $RunDir 'logs'
 $PidFile = Join-Path $RunDir 'pids'
 
+. (Join-Path $PSScriptRoot 'lib\windows-postgres.ps1')
+
 function Show-Help {
     @"
 Usage: .\scripts\start-local.ps1 [options]
 
-Starts PostgreSQL (optional), runs migrations, then the FastAPI backend and React frontend.
+Starts PostgreSQL, runs migrations, then the FastAPI backend and React frontend.
 
 Options:
-  -Docker      Start Postgres via docker compose (host port 5433)
-  -SkipDeps    Skip uv sync / yarn install (faster restarts)
-  -Help        Show this help
+  -LocalPostgres   Use local PostgreSQL on port 5432 (default when -Docker is not set)
+  -Docker          Start Postgres via docker compose (host port 5433)
+  -SkipDeps        Skip uv sync / yarn install (faster restarts)
+  -Help            Show this help
+
+Local PostgreSQL (Windows):
+  First time:  scripts\setup-local-postgres.cmd
+  Then:        scripts\start-local-postgres.cmd
 
 URLs (default ports from backend\.env):
   App:      http://localhost:3000
@@ -35,15 +44,7 @@ URLs (default ports from backend\.env):
   API docs: http://localhost:8080/docs
 
 Stop with: .\scripts\stop-local.ps1
-Or close the Backend / Frontend terminal windows.
 "@
-}
-
-function Write-Log([string]$Message) { Write-Host "==> $Message" -ForegroundColor Cyan }
-function Write-Warn([string]$Message) { Write-Host "!!> $Message" -ForegroundColor Yellow }
-function Write-Die([string]$Message) {
-    Write-Host "xx> $Message" -ForegroundColor Red
-    exit 1
 }
 
 function Require-Command([string]$Name) {
@@ -74,54 +75,6 @@ function Get-ShellExe {
     return 'powershell'
 }
 
-function Test-PostgresPort {
-    param([string]$HostName, [int]$Port)
-    try {
-        $client = [System.Net.Sockets.TcpClient]::new()
-        $client.Connect($HostName, $Port)
-        $client.Close()
-        return $true
-    } catch {
-        return $false
-    }
-}
-
-function Wait-Postgres {
-    param([string]$HostName, [int]$Port)
-    Write-Log "Waiting for PostgreSQL at ${HostName}:${Port}..."
-    for ($i = 1; $i -le 60; $i++) {
-        if (Test-PostgresPort -HostName $HostName -Port $Port) {
-            Start-Sleep -Seconds 1
-            Write-Log 'PostgreSQL port is open'
-            return
-        }
-        Start-Sleep -Seconds 1
-    }
-    Write-Die "PostgreSQL not available. Use -Docker, start Postgres manually, or check backend\.env"
-}
-
-function Invoke-Psql {
-    param([string]$Sql)
-    $pg = Get-Command psql -ErrorAction SilentlyContinue
-    if (-not $pg) { return $false }
-    $env:PGPASSWORD = $env:DB_PASSWORD
-    & psql -h $env:DB_HOST -p $env:DB_PORT -U $env:DB_USER -d postgres -tAc $Sql 2>$null
-    return $true
-}
-
-function Ensure-Database {
-    if (-not (Get-Command psql -ErrorAction SilentlyContinue)) {
-        Write-Warn 'psql not on PATH; skipping CREATE DATABASE (docker compose creates db_allocation by default)'
-        return
-    }
-    $exists = Invoke-Psql "SELECT 1 FROM pg_database WHERE datname='$($env:DB_NAME)'"
-    if ($exists -ne '1') {
-        Write-Log "Creating database '$($env:DB_NAME)'"
-        $env:PGPASSWORD = $env:DB_PASSWORD
-        & psql -h $env:DB_HOST -p $env:DB_PORT -U $env:DB_USER -d postgres -c "CREATE DATABASE `"$($env:DB_NAME)`";"
-    }
-}
-
 function Start-DockerPostgres {
     Require-Command docker
     $env:DB_PORT = '5433'
@@ -133,7 +86,8 @@ function Start-DockerPostgres {
     } finally {
         Pop-Location
     }
-    Wait-Postgres -HostName $env:DB_HOST -Port ([int]$env:DB_PORT)
+    $hostName = if ($env:DB_HOST) { $env:DB_HOST } else { 'localhost' }
+    Wait-LocalPostgres -HostName $hostName -Port ([int]$env:DB_PORT) -User $(if ($env:DB_USER) { $env:DB_USER } else { 'postgres' })
 }
 
 function Setup-Backend {
@@ -197,10 +151,10 @@ Read-Host 'Process ended. Press Enter to close this window'
 
 if ($Help) { Show-Help; exit 0 }
 
-# Allow unix-style flags when launched from cmd: start-local.cmd --docker
 foreach ($a in $args) {
     switch -Regex ($a) {
         '^--?docker$' { $Docker = $true }
+        '^--?local-postgres$' { $LocalPostgres = $true }
         '^--?skip-deps$' { $SkipDeps = $true }
         '^--?help$' { Show-Help; exit 0 }
     }
@@ -209,7 +163,6 @@ foreach ($a in $args) {
 New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
 if (Test-Path $PidFile) { Remove-Item -LiteralPath $PidFile -Force }
 
-# uv on Windows is often installed via pip / official installer
 $uvLocal = Join-Path $env:USERPROFILE '.local\bin'
 if (Test-Path $uvLocal) { $env:Path = "$uvLocal;$env:Path" }
 
@@ -219,6 +172,7 @@ if (-not (Test-Path $envFile)) {
     if (Test-Path $example) {
         Write-Log 'Creating backend\.env from .env.example'
         Copy-Item -LiteralPath $example -Destination $envFile
+        Write-Warn 'Set DB_PASSWORD in backend\.env to your postgres password, or run: scripts\setup-local-postgres.cmd'
     } else {
         Write-Die 'backend\.env not found and no .env.example to copy'
     }
@@ -233,20 +187,15 @@ if (-not $env:DB_NAME) { $env:DB_NAME = 'db_allocation' }
 if (-not $env:API_PORT) { $env:API_PORT = '8080' }
 if (-not $env:FRONTEND_PORT) { $env:FRONTEND_PORT = '3000' }
 
-$dbPort = [int]$env:DB_PORT
-
 if ($Docker) {
     Start-DockerPostgres
-} elseif (Test-PostgresPort -HostName $env:DB_HOST -Port $dbPort) {
-    Write-Log "PostgreSQL already running on port $($env:DB_PORT)"
-} elseif (Get-Command docker -ErrorAction SilentlyContinue) {
-    Write-Warn "PostgreSQL not reachable on port $($env:DB_PORT); trying docker compose..."
-    Start-DockerPostgres
+    Ensure-PostgresDatabase
 } else {
-    Wait-Postgres -HostName $env:DB_HOST -Port $dbPort
+    # Default: local PostgreSQL (no automatic Docker fallback)
+    if (-not $LocalPostgres) { $LocalPostgres = $true }
+    Initialize-LocalPostgresWindows
 }
 
-Ensure-Database
 Setup-Backend
 Setup-Frontend
 
@@ -268,5 +217,4 @@ Write-Host "  API docs:  http://localhost:$apiPort/docs"
 Write-Host "  Postgres:  $($env:DB_HOST):$($env:DB_PORT)/$($env:DB_NAME)"
 Write-Host ''
 Write-Log 'Stop with: .\scripts\stop-local.ps1 (or close the Backend / Frontend windows)'
-Write-Log 'Logs: .local\logs\backend.log and .local\logs\frontend.log'
 Write-Host ''
