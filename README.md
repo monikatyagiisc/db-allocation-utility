@@ -177,10 +177,33 @@ yarn dev --port 3000
 
 ## Email via Microsoft Outlook
 
-The app sends mail through **Office 365 SMTP** (same as Outlook desktop/web). Configure `backend/.env`:
+Most corporate tenants (including Alight) **disable SMTP username/password** with error `5.7.139 basic authentication is disabled`. Use **Microsoft Graph** instead:
+
+### Option A — Microsoft Graph (recommended)
+
+1. In [Azure Portal](https://portal.azure.com) → **Microsoft Entra ID** → **App registrations** → **New registration**.
+2. Note **Application (client) ID** and **Directory (tenant) ID**.
+3. **Certificates & secrets** → New client secret → copy the value.
+4. **API permissions** → Add permission → **Microsoft Graph** → **Application permissions** → **Mail.Send** → **Grant admin consent** (requires admin).
+5. Add to `backend/.env`:
 
 ```env
 EMAIL_ENABLED=true
+EMAIL_PROVIDER=graph
+MAIL_FROM=you@alight.com
+GRAPH_SEND_AS=you@alight.com
+AZURE_TENANT_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+AZURE_CLIENT_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+AZURE_CLIENT_SECRET=your-secret-value
+```
+
+6. Restart the backend. `GRAPH_SEND_AS` is the mailbox that sends mail (your work email).
+
+### Option B — SMTP (only if IT enables SMTP AUTH)
+
+```env
+EMAIL_ENABLED=true
+EMAIL_PROVIDER=smtp
 SMTP_HOST=smtp.office365.com
 SMTP_PORT=587
 SMTP_USE_TLS=true
@@ -189,12 +212,7 @@ SMTP_PASSWORD=your-app-password
 MAIL_FROM=you@yourcompany.com
 ```
 
-### Outlook setup tips
-
-1. Use your work **Microsoft 365** email for `SMTP_USER` and `MAIL_FROM`.
-2. If **multi-factor authentication (MFA)** is enabled, create an **app password** at [Microsoft account security](https://account.microsoft.com/security) and use it as `SMTP_PASSWORD` (not your normal login password).
-3. Your IT admin may need to enable **SMTP AUTH** for your mailbox in Exchange Online.
-4. Restart the backend after changing `.env`.
+If you see **5.7.139**, SMTP is blocked — switch to Option A.
 
 ### In the UI
 

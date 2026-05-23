@@ -118,8 +118,11 @@ class KpiListResponse(BaseModel):
 class EmailStatusOut(BaseModel):
     enabled: bool
     configured: bool
-    smtp_host: str
+    provider: str
+    smtp_host: str | None = None
     mail_from: str | None = None
+    graph_send_as: str | None = None
+    hint: str | None = None
 
 
 class SendEmailRequest(BaseModel):

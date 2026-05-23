@@ -23,14 +23,21 @@ class Settings(BaseSettings):
     log_file: str | None = ".local/logs/api.log"
     log_request_body: bool = True
 
-    # Microsoft Outlook / Office 365 SMTP (smtp.office365.com:587)
+    # Email: smtp (legacy) or graph (recommended for Microsoft 365 — SMTP basic auth often disabled)
     email_enabled: bool = False
+    email_provider: str = "smtp"  # smtp | graph
+
     smtp_host: str = "smtp.office365.com"
     smtp_port: int = 587
     smtp_use_tls: bool = True
     smtp_user: str = ""
     smtp_password: str = ""
     mail_from: str = ""
+
+    azure_tenant_id: str = ""
+    azure_client_id: str = ""
+    azure_client_secret: str = ""
+    graph_send_as: str = ""  # mailbox UPN to send from (defaults to mail_from)
 
     @computed_field
     @property

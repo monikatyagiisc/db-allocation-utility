@@ -28,6 +28,8 @@ export default function SendEmailDialog({ open, mode, onClose, onSent }: Props) 
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(true);
   const [configured, setConfigured] = useState(false);
+  const [emailHint, setEmailHint] = useState<string | null>(null);
+  const [provider, setProvider] = useState<string>('smtp');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -35,7 +37,11 @@ export default function SendEmailDialog({ open, mode, onClose, onSent }: Props) 
     setChecking(true);
     setError('');
     getEmailStatus()
-      .then((s) => setConfigured(s.configured))
+      .then((s) => {
+        setConfigured(s.configured);
+        setEmailHint(s.hint);
+        setProvider(s.provider);
+      })
       .catch((e) => setError(e instanceof Error ? e.message : 'Could not check email status'))
       .finally(() => setChecking(false));
   }, [open]);
@@ -142,14 +148,17 @@ export default function SendEmailDialog({ open, mode, onClose, onSent }: Props) 
 
         {!checking && !configured && (
           <div className="alert alert-error">
-            Email is not configured on the server. Add Outlook SMTP settings to{' '}
+            Email is not configured on the server. Add Microsoft Graph settings to{' '}
             <code>backend/.env</code> (see README → Email via Microsoft Outlook).
+            {emailHint ? <p style={{ marginTop: '0.5rem', marginBottom: 0 }}>{emailHint}</p> : null}
           </div>
         )}
 
         {!checking && configured && (
           <p className="modal-description">
-            Sends through your organization&apos;s Microsoft Outlook / Office 365 mailbox (SMTP).
+            Sends via Microsoft Outlook / Office 365
+            {provider === 'graph' ? ' (Graph API)' : ' (SMTP)'}.
+            {emailHint ? ` ${emailHint}` : ''}
           </p>
         )}
 

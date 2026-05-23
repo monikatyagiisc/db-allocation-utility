@@ -1,6 +1,7 @@
 import smtplib
 from datetime import date
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -43,11 +44,23 @@ def _require_email_ready() -> None:
 def email_status(user: User = Depends(get_current_user)):
     logger.debug("Email status check user_id=%s", user.id)
     configured = email_service.is_email_configured()
+    provider = email_service.email_provider_label()
+    hint = None
+    if settings.email_enabled and not configured:
+        if provider == "graph":
+            hint = "Set AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET, GRAPH_SEND_AS"
+        else:
+            hint = "Set SMTP_USER, SMTP_PASSWORD, MAIL_FROM — or use EMAIL_PROVIDER=graph if SMTP basic auth is disabled"
+    elif provider == "graph":
+        hint = "Using Microsoft Graph API (OAuth2)"
     return EmailStatusOut(
         enabled=settings.email_enabled,
         configured=configured,
-        smtp_host=settings.smtp_host,
-        mail_from=settings.mail_from if configured else None,
+        provider=provider,
+        smtp_host=settings.smtp_host if provider == "smtp" else None,
+        mail_from=settings.mail_from or None,
+        graph_send_as=(settings.graph_send_as or settings.mail_from or None) if provider == "graph" else None,
+        hint=hint,
     )
 
 
@@ -66,7 +79,7 @@ def send_custom_email(
             body_html=payload.body if payload.html else None,
             cc=payload.cc,
         )
-    except (RuntimeError, ValueError, smtplib.SMTPException) as exc:
+    except (RuntimeError, ValueError, smtplib.SMTPException, httpx.HTTPError) as exc:
         logger.exception("Failed to send email")
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     return EmailSendResult(message=f"Email sent to {', '.join(payload.to)}")
@@ -97,7 +110,7 @@ def notify_record_assignee(
     logger.info("Notify record id=%s to=%s user_id=%s", record_id, recipient, user.id)
     try:
         email_service.send_email([recipient], subject, body, body_html=html)
-    except (RuntimeError, ValueError, smtplib.SMTPException) as exc:
+    except (RuntimeError, ValueError, smtplib.SMTPException, httpx.HTTPError) as exc:
         logger.exception("Failed to notify assignee")
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     return EmailSendResult(message=f"Notification sent to {recipient}")
@@ -136,7 +149,7 @@ def send_expiry_digest(
     )
     try:
         email_service.send_email(payload.to, subject, body, body_html=html, cc=payload.cc)
-    except (RuntimeError, ValueError, smtplib.SMTPException) as exc:
+    except (RuntimeError, ValueError, smtplib.SMTPException, httpx.HTTPError) as exc:
         logger.exception("Failed to send expiry digest")
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     return EmailSendResult(

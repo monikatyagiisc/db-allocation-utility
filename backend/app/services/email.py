@@ -1,4 +1,4 @@
-"""Send email via SMTP (Microsoft 365 / Outlook: smtp.office365.com:587)."""
+"""Send email via SMTP or Microsoft Graph (Outlook / Office 365)."""
 
 from __future__ import annotations
 
@@ -13,13 +13,29 @@ from email_validator import EmailNotValidError, validate_email
 from app.config import settings
 from app.logging_config import get_logger
 from app.models import DatabaseRecord
+from app.services import graph_mail
 
 logger = get_logger("app.email")
 
 _EMAIL_LIKE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
+_BASIC_AUTH_DISABLED_HINT = (
+    "Microsoft 365 blocked SMTP username/password (error 5.7.139). "
+    "Your organization disabled basic authentication. "
+    "Switch to Microsoft Graph in backend/.env: EMAIL_PROVIDER=graph and set "
+    "AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET, GRAPH_SEND_AS. "
+    "See README → Email via Microsoft Outlook."
+)
 
-def is_email_configured() -> bool:
+
+def _provider() -> str:
+    p = (settings.email_provider or "smtp").strip().lower()
+    if p == "graph" or (p == "auto" and graph_mail.is_graph_configured()):
+        return "graph"
+    return "smtp"
+
+
+def is_smtp_configured() -> bool:
     return bool(
         settings.email_enabled
         and settings.smtp_host
@@ -27,6 +43,18 @@ def is_email_configured() -> bool:
         and settings.smtp_password
         and settings.mail_from
     )
+
+
+def is_email_configured() -> bool:
+    if not settings.email_enabled:
+        return False
+    if _provider() == "graph":
+        return graph_mail.is_graph_configured()
+    return is_smtp_configured()
+
+
+def email_provider_label() -> str:
+    return _provider()
 
 
 def normalize_email(value: str) -> str | None:
@@ -45,7 +73,6 @@ def assignee_to_email(assignee: str | None) -> str | None:
     text = assignee.strip()
     if normalize_email(text):
         return normalize_email(text)
-    # "Name <email@corp.com>" or "email@corp.com (Name)"
     angle = re.search(r"<([^>]+)>", text)
     if angle:
         return normalize_email(angle.group(1))
@@ -59,6 +86,48 @@ def assignee_to_email(assignee: str | None) -> str | None:
     return None
 
 
+def _send_via_smtp(
+    to: Sequence[str],
+    subject: str,
+    body_text: str,
+    *,
+    body_html: str | None = None,
+    cc: Sequence[str] | None = None,
+) -> None:
+    if not is_smtp_configured():
+        raise RuntimeError(
+            "SMTP is not configured. Set SMTP_USER, SMTP_PASSWORD, MAIL_FROM in backend/.env"
+        )
+
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"] = settings.mail_from
+    msg["To"] = ", ".join(to)
+    if cc:
+        msg["Cc"] = ", ".join(cc)
+
+    msg.attach(MIMEText(body_text, "plain", "utf-8"))
+    if body_html:
+        msg.attach(MIMEText(body_html, "html", "utf-8"))
+
+    all_recipients = list(to) + list(cc or [])
+    logger.info("SMTP send to=%s subject=%s", all_recipients, subject[:80])
+
+    try:
+        with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=60) as smtp:
+            if settings.smtp_use_tls:
+                smtp.starttls()
+            smtp.login(settings.smtp_user, settings.smtp_password)
+            smtp.sendmail(settings.mail_from, all_recipients, msg.as_string())
+    except smtplib.SMTPAuthenticationError as exc:
+        err = str(exc).lower()
+        if "5.7.139" in err or "basic authentication is disabled" in err:
+            raise RuntimeError(_BASIC_AUTH_DISABLED_HINT) from exc
+        raise
+
+    logger.info("SMTP email sent to %s", all_recipients)
+
+
 def send_email(
     to: Sequence[str],
     subject: str,
@@ -69,7 +138,7 @@ def send_email(
 ) -> None:
     if not is_email_configured():
         raise RuntimeError(
-            "Email is not configured. Set EMAIL_ENABLED=true and SMTP_* variables in backend/.env"
+            "Email is not configured. Set EMAIL_ENABLED=true in backend/.env (see README)."
         )
 
     recipients = [normalize_email(r) for r in to]
@@ -80,27 +149,12 @@ def send_email(
     cc_list = [normalize_email(r) for r in (cc or [])]
     cc_list = [r for r in cc_list if r]
 
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = subject
-    msg["From"] = settings.mail_from
-    msg["To"] = ", ".join(recipients)
-    if cc_list:
-        msg["Cc"] = ", ".join(cc_list)
-
-    msg.attach(MIMEText(body_text, "plain", "utf-8"))
-    if body_html:
-        msg.attach(MIMEText(body_html, "html", "utf-8"))
-
-    all_recipients = recipients + cc_list
-    logger.info("Sending email to=%s subject=%s", all_recipients, subject[:80])
-
-    with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=60) as smtp:
-        if settings.smtp_use_tls:
-            smtp.starttls()
-        smtp.login(settings.smtp_user, settings.smtp_password)
-        smtp.sendmail(settings.mail_from, all_recipients, msg.as_string())
-
-    logger.info("Email sent to %s", all_recipients)
+    if _provider() == "graph":
+        graph_mail.send_via_graph(
+            recipients, subject, body_text, body_html=body_html, cc=cc_list
+        )
+    else:
+        _send_via_smtp(recipients, subject, body_text, body_html=body_html, cc=cc_list)
 
 
 def format_record_notification(record: DatabaseRecord, extra_message: str | None = None) -> tuple[str, str, str]:

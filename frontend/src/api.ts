@@ -227,8 +227,11 @@ export async function importExcel(file: File, replace = false) {
 export type EmailStatus = {
   enabled: boolean;
   configured: boolean;
-  smtp_host: string;
+  provider: string;
+  smtp_host: string | null;
   mail_from: string | null;
+  graph_send_as: string | null;
+  hint: string | null;
 };
 
 export async function getEmailStatus() {
