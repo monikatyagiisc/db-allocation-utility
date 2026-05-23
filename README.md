@@ -67,6 +67,8 @@ scripts\setup-local-postgres.cmd
 
 You will be prompted for the **postgres** user password you chose during PostgreSQL installation.
 
+> **Note:** On Windows, use `psql --version` (not `postgres --version`). The setup script finds `psql` under `C:\Program Files\PostgreSQL\*\bin` automatically. If your project path contains spaces (e.g. OneDrive), use the latest scripts from git — they load `scripts\windows-postgres-helpers.ps1` (not `scripts\lib\`, which is excluded from git).
+
 Start the app (uses port **5432**, does not start Docker):
 
 ```cmd

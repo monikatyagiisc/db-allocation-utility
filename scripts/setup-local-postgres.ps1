@@ -20,7 +20,7 @@ $BackendDir = Join-Path $RootDir 'backend'
 $EnvFile = Join-Path $BackendDir '.env'
 $EnvExample = Join-Path $BackendDir '.env.example'
 
-. (Join-Path $PSScriptRoot 'lib\windows-postgres.ps1')
+. (Get-Item -LiteralPath (Join-Path $PSScriptRoot 'Import-PostgresHelpers.ps1')).FullName
 
 function Show-Help {
     @"

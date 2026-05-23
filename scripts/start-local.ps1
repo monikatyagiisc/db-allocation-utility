@@ -20,7 +20,7 @@ $RunDir = Join-Path $RootDir '.local'
 $LogDir = Join-Path $RunDir 'logs'
 $PidFile = Join-Path $RunDir 'pids'
 
-. (Join-Path $PSScriptRoot 'lib\windows-postgres.ps1')
+. (Get-Item -LiteralPath (Join-Path $PSScriptRoot 'Import-PostgresHelpers.ps1')).FullName
 
 function Show-Help {
     @"
